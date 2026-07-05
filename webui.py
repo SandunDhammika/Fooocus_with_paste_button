@@ -223,7 +223,7 @@ with shared.gradio_root:
                             for image_count in range(modules.config.default_controlnet_image_count):
                                 image_count += 1
                                 with gr.Column():
-                                    ip_image = grh.Image(label='Image', source='upload', type='numpy', show_label=False, height=300, value=modules.config.default_ip_images[image_count])
+                                    ip_image = grh.Image(label='Image', source='upload', type='numpy', show_label=False, height=300, elem_id=f'ip_image_{image_count}', value=modules.config.default_ip_images[image_count])
                                     ip_images.append(ip_image)
                                     ip_ctrls.append(ip_image)
                                     with gr.Column(visible=modules.config.default_image_prompt_advanced_checkbox) as ad_col:
@@ -239,6 +239,35 @@ with shared.gradio_root:
                                         ip_type = gr.Radio(label='Type', choices=flags.ip_list, value=modules.config.default_ip_types[image_count], container=False)
                                         ip_types.append(ip_type)
                                         ip_ctrls.append(ip_type)
+
+                                        ip_paste_button = gr.Button(value='Paste from Clipboard')
+                                        def _noop():
+                                            return None
+                                        paste_js_template = (
+                                            "async () => {\n"
+                                            "    try {\n"
+                                            "        const items = await navigator.clipboard.read();\n"
+                                            "        for (const item of items) {\n"
+                                            "            for (const type of item.types) {\n"
+                                            "                if (type.startsWith('image/')) {\n"
+                                            "                    const blob = await item.getType(type);\n"
+                                            "                    const file = new File([blob], 'clipboard.png', {type: blob.type});\n"
+                                            "                    const dt = new DataTransfer();\n"
+                                            "                    dt.items.add(file);\n"
+                                            "                    const input = gradioApp().querySelector('#ip_image_{image_count} input[type=\"file\"]');\n"
+                                            "                    if (!input) { alert('Paste target not found'); return; }\n"
+                                            "                    input.files = dt.files;\n"
+                                            "                    input.dispatchEvent(new Event('change', {bubbles: true}));\n"
+                                            "                    return;\n"
+                                            "                }\n"
+                                            "            }\n"
+                                            "        }\n"
+                                            "        alert('No image found in clipboard');\n"
+                                            "    } catch(e) { alert('Paste failed: ' + e); }\n"
+                                            "}"
+                                        )
+                                        paste_js = paste_js_template.replace('{image_count}', str(image_count))
+                                        ip_paste_button.click(_noop, inputs=[], outputs=[], _js=paste_js, queue=False, show_progress=False)
 
                                         ip_type.change(lambda x: flags.default_parameters[x], inputs=[ip_type], outputs=[ip_stop, ip_weight], queue=False, show_progress=False)
                                     ip_ad_cols.append(ad_col)
