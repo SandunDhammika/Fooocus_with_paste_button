@@ -2,7 +2,7 @@ import cv2
 import os
 import os.path as osp
 import torch
-from torch.hub import download_url_to_file, get_dir
+from torch.hub import get_dir
 from urllib.parse import urlparse
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,6 +59,8 @@ def img2tensor(imgs, bgr2rgb=True, float32=True):
 def load_file_from_url(url, model_dir=None, progress=True, file_name=None, save_dir=None):
     """Ref:https://github.com/1adrianb/face-alignment/blob/master/face_alignment/utils.py
     """
+    from modules.model_loader import load_file_from_url as load_file_from_url_core
+
     if model_dir is None:
         hub_dir = get_dir()
         model_dir = os.path.join(hub_dir, 'checkpoints')
@@ -71,11 +73,13 @@ def load_file_from_url(url, model_dir=None, progress=True, file_name=None, save_
     filename = os.path.basename(parts.path)
     if file_name is not None:
         filename = file_name
-    cached_file = os.path.abspath(os.path.join(save_dir, filename))
-    if not os.path.exists(cached_file):
-        print(f'Downloading: "{url}" to {cached_file}\n')
-        download_url_to_file(url, cached_file, hash_prefix=None, progress=progress)
-    return cached_file
+
+    return load_file_from_url_core(
+        url=url,
+        model_dir=save_dir,
+        progress=progress,
+        file_name=filename
+    )
 
 
 def scandir(dir_path, suffix=None, recursive=False, full_path=False):
